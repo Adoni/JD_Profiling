@@ -1,8 +1,8 @@
-from label2trainset.data_constructor import *
-from label2trainset.learn import *
+from prlabel2trainset.data_constructor import *
+from prlabel2trainset.learn import *
 def test(attribute,count):
     print '========%s:%d========'%(attribute,count)
-    #iterate_learn(attribute,10,count)
+    #iterate_learn(attribute,10)
     construct(attribute,training_count=count)
     print ''
     print learn(attribute)

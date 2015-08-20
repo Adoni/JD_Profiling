@@ -9,7 +9,7 @@ from statistics import *
 def get_data(attribute,kind):
     data = load_svmlight_file(RAW_DATA_DIR+'label2trainset/%s_%s.data'%(attribute,kind),n_features=11000)
     uids=[line[:-1] for line in open(RAW_DATA_DIR+'label2trainset/%s_%s_uids.data'%(attribute,kind))]
-    return data[0].toarray(), data[1], uids
+    return data[0], data[1], uids
 
 def learn(attribute):
     all_x,all_y,all_uids=get_data('all','train')
@@ -30,7 +30,6 @@ def update_labeled_feature(attribute,new_labeled_feature, max_count=2):
     fin.close()
     fout=open(base_dir+'/labeled_features/review_constraint_%s.constraints'%attribute,'a')
     count=0
-    print new_labeled_feature
     for label in new_labeled_feature:
         if label[0] in exist_labes:
             continue
@@ -42,16 +41,16 @@ def update_labeled_feature(attribute,new_labeled_feature, max_count=2):
         if count==max_count:
             break
 
-def iterate_learn(attribute,iterate_count,training_count):
+def iterate_learn(attribute,iterate_count):
     from data_constructor import construct
     fout=open(base_dir+'/label2trainset/iterate_result_%s.result'%attribute,'w')
     for i in xrange(iterate_count):
         print i
-        construct(attribute,training_count)
+        construct(attribute)
         print ''
         accurate=learn(attribute)
         fout.write('%d %0.4f\n'%(i,accurate))
         print accurate
-        label_distribute=statistics_after_train(attribute,method='label2trainset',threshold=200,show=False,feature_file_name=base_dir+'/features/mention.feature')
+        label_distribute=statistics_after_train(attribute,method='label2trainset',threshold=2000,show=False,feature_file_name=base_dir+'/features/all_features.feature')
         label_distribute=sorted(label_distribute,key=lambda d:1.0*abs(d[1][0]-d[1][1])/sum(d[1]), reverse=True)
         update_labeled_feature(attribute,label_distribute)

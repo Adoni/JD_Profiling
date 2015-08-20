@@ -1,56 +1,68 @@
 from sklearn.externals.joblib import Memory
 from sklearn.datasets import load_svmlight_file
 from settings import RAW_DATA_DIR
-from settings import labeled_feature_file_dir
+from settings import self_training_file_dir
 from settings import base_dir
 from sklearn.naive_bayes import MultinomialNB
-from statistics import *
+from sklearn.linear_model import LogisticRegression
+import numpy
 
-def get_data(attribute,kind):
-    data = load_svmlight_file(RAW_DATA_DIR+'label2trainset/%s_%s.data'%(attribute,kind),n_features=11000)
-    uids=[line[:-1] for line in open(RAW_DATA_DIR+'label2trainset/%s_%s_uids.data'%(attribute,kind))]
-    return data[0], data[1], uids
+def get_data(attribute):
+    labeled_train = load_svmlight_file(self_training_file_dir+'labeled_train_%s.data'%(attribute),n_features=11000)
+    unlabeled_train = load_svmlight_file(self_training_file_dir+'unlabeled_train_%s.data'%(attribute),n_features=11000)
+    test = load_svmlight_file(self_training_file_dir+'test_%s.data'%(attribute),n_features=11000)
+    return labeled_train,unlabeled_train,test
 
-def learn(attribute):
-    all_x,all_y,all_uids=get_data('all','train')
-    train_x,train_y,uids=get_data(attribute,'train')
-    test_x,test_y,_=get_data(attribute,'test')
+def learn(train,test):
+    train_x,train_y=train
+    test_x,test_y=test
     clf = MultinomialNB()
+    #clf = LogisticRegression()
     clf.fit(train_x, train_y)
-    count=30000
-    count=min(count,all_x.shape[0])
-    fout=open(RAW_DATA_DIR+'label2trainset/train_classify_result_%s.data'%attribute,'w')
-    for uid,y in zip(all_uids[:count],clf.predict_proba(all_x[:count])):
-        fout.write('%s\t0\t%0.4f\t1\t%0.4f\n'%(uid,y[0],y[1]))
-    return clf.score(test_x,test_y)
+    return clf,clf.score(test_x,test_y)
 
-def update_labeled_feature(attribute,new_labeled_feature, max_count=2):
-    fin=open(base_dir+'/labeled_features/review_constraint_%s.constraints'%attribute)
-    exist_labes=[line.split(' ')[0].decode('utf8') for line in fin]
-    fin.close()
-    fout=open(base_dir+'/labeled_features/review_constraint_%s.constraints'%attribute,'a')
-    count=0
-    for label in new_labeled_feature:
-        if label[0] in exist_labes:
-            continue
-        if sum(label[1])==0:
-            break
-        d=[1.*label[1][0]/sum(label[1]),1.*label[1][1]/sum(label[1])]
-        fout.write('%s 0:%0.3f 1:%0.3f\n'%(label[0].encode('utf8'),d[0],d[1]))
-        count+=1
-        if count==max_count:
-            break
+def extract_new_data(result,count):
+    good_x=[]
+    good_y=[]
+    bad_x=[]
+    bad_y=[]
+    result0=sorted(filter(lambda r:r[1][0]>r[1][1],result),key=lambda d:abs(d[1][0]-d[1][1])*sum(d[0]),reverse=True)
+    result1=sorted(filter(lambda r:r[1][0]<r[1][1],result),key=lambda d:abs(d[1][0]-d[1][1])*sum(d[0]),reverse=True)
+    count=count/2
+    for r in result0[:count]+result1[:count]:
+        good_x.append(r[0])
+        good_y.append(0 if r[1][0]>r[1][1] else 1)
+    for r in result1[:count]+result1[:count]:
+        bad_x.append(r[0])
+        bad_y.append(0 if r[1][0]>r[1][1] else 1)
+    return numpy.array(good_x),numpy.array(good_y),numpy.array(bad_x),numpy.array(bad_y)
 
-def iterate_learn(attribute,iterate_count):
-    from data_constructor import construct
-    fout=open(base_dir+'/label2trainset/iterate_result_%s.result'%attribute,'w')
+def iterate(attribute,iterate_count,new_data_count):
+    print ''
+    labeled_train,unlabeled_train,test=get_data(attribute)
+    labeled_train=[labeled_train[0].toarray(),labeled_train[1]]
+    unlabeled_train=[unlabeled_train[0].toarray(), unlabeled_train[1]]
+    test=[test[0].toarray(),test[1]]
+    scores=[]
     for i in xrange(iterate_count):
-        print i
-        construct(attribute)
-        print ''
-        accurate=learn(attribute)
-        fout.write('%d %0.4f\n'%(i,accurate))
-        print accurate
-        label_distribute=statistics_after_train(attribute,method='label2trainset',threshold=2000,show=False,feature_file_name=base_dir+'/features/all_features.feature')
-        label_distribute=sorted(label_distribute,key=lambda d:1.0*abs(d[1][0]-d[1][1])/sum(d[1]), reverse=True)
-        update_labeled_feature(attribute,label_distribute)
+        print '----------------'
+        print 'Iterate: %d'%i
+        print 'Labeled training data size: %d'%(len(labeled_train[0]))
+        print 'Unlabeled training data size: %d'%(len(unlabeled_train[0]))
+        print 'Testing data size: %d'%(len(test[0]))
+        clf,score=learn(labeled_train,test)
+        print 'Accurate: %0.4f'%score
+        scores.append(score)
+        result=clf.predict_proba(unlabeled_train[0])
+        good_x,good_y,bad_x,bad_y=extract_new_data(zip(unlabeled_train[0],result),new_data_count)
+        if len(good_x)==0:
+            print 'No more new train data!'
+            break
+        print 'New training data size: %d'%(len(good_x))
+        labeled_train[0]=numpy.concatenate((labeled_train[0], good_x), axis=0)
+        labeled_train[1]=numpy.concatenate((labeled_train[1], good_y), axis=0)
+        unlabeled_train=[bad_x,bad_y]
+    print '--------'
+    for s in scores:
+        print s
+    print '--------'
