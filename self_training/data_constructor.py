@@ -64,10 +64,14 @@ def construct_train_set(attribute,training_count):
     confidence=sorted(confidence,key=lambda d:d[2],reverse=True)
     confidence0=filter(lambda d:d[1]==0,confidence)[:training_count/2]
     confidence1=filter(lambda d:d[1]==1,confidence)[:training_count/2]
-    confidence_unlabel=filter(lambda d:d[1]==-1,confidence)
+    confidence_unlabel=[]
+    confidence_unlabel+=filter(lambda d:d[1]==-1,confidence)
+    #confidence_unlabel+=filter(lambda d:d[1]==0,confidence)[training_count/2:training_count*5]
+    #confidence_unlabel+=filter(lambda d:d[1]==1,confidence)[training_count/2:training_count*5]
+    confidence_unlabel=confidence_unlabel[:5*training_count]
     print len(confidence0),len(confidence1)
     fout=open(self_training_file_dir+'labeled_train_%s.data'%attribute,'w')
-    for d in confidence0+confidence1:
+    for d in set(confidence0+confidence1):
         fout.write('%d %s\n'%(d[1],d[3]))
     fout_unlabel=open(self_training_file_dir+'unlabeled_train_%s.data'%attribute,'w')
     for d in confidence_unlabel:

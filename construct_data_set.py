@@ -116,19 +116,22 @@ def construct_train_product():
         collection.insert({'_id':pid,'users':users,'mentions':mentions})
         bar.draw(i+1)
 
-def output_graph():
-    uids=[line.split(' ')[0] for line in open(RAW_DATA_DIR+'user_id.data')]
-    pids=[line.split(' ')[0] for line in open(RAW_DATA_DIR+'product_id.data')]
-    pids=set(pids)
+def output_user_product_graph():
     fout=open(RAW_DATA_DIR+'graph.data','w')
-    collection=Connection().jd['users']
+    collection=Connection().jd.train_users
     bar=progress_bar(collection.count())
     for index,user in enumerate(collection.find()):
         uid=user['_id']
-        for r in user['records']:
-            if r[0] not in pids:
-                continue
-            fout.write('%s %s\n'%(uid,r[0]))
+        for pid in user['products']:
+            fout.write('%s %s\n'%(uid,pid))
+        bar.draw(index+1)
+
+    collection=Connection().jd.test_users
+    bar=progress_bar(collection.count())
+    for index,user in enumerate(collection.find()):
+        uid=user['_id']
+        for pid in user['products']:
+            fout.write('%s %s\n'%(uid,pid))
         bar.draw(index+1)
 
 def output_vector(entity_name):
@@ -148,16 +151,47 @@ def output_all_features():
     fout=open(base_dir+'/features/all_features.feature','w')
     for i in get_all_ids_from_db('train_products')[:10000]+mention_words:
         fout.write('%s\n'%i)
+
+def insert_LINE_vector(file_name=RAW_DATA_DIR+'normalize2.data'):
+    vectors=dict()
+    fin=open(file_name)
+    count=int(fin.read().split(' ')[0])
+    bar=progress_bar(count)
+    for index in xrange(count):
+        line=fin.readline()
+        line=line[:-1].split(' ')
+        vector=map(lambda d:float(d),line[1:])
+        vectors[line[0]]=vector
+        bar.draw(index+1)
+    collection=Connection().jd.train_users
+    bar=progress_bar(collection.count())
+    for index,user in enumerate(collection.find()):
+        if user['_id'] not in vectors:
+            continue
+        collection.update({'_id':user['_id']},{'$set':{'user_product_vector':vectors[user['_id']]}})
+        bar.draw(index+1)
+    collection=Connection().jd.test_users
+    bar=progress_bar(collection.count())
+    for index,user in enumerate(collection.find()):
+        if user['_id'] not in vectors:
+            continue
+        collection.update({'_id':user['_id']},{'$set':{'user_product_vector':vectors[user['_id']]}})
+        bar.draw(index+1)
+
+
+
 if __name__=='__main__':
     #construct_data_set('user')
     #construct_data_set('product')
     #output_graph()
     #construct_train_user()
     #construct_train_product()
-    construct_test_user()
+    #construct_test_user()
     #attribute_statistics('gender')
     #attribute_statistics('age')
     #attribute_statistics('location')
     #attribute_statistics('kids')
     #output_all_features()
+    #output_user_product_graph()
+    insert_LINE_vector()
     print 'Done'

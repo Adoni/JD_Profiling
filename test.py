@@ -64,10 +64,10 @@ def age_distribute():
         if age>50 or age<10:
             continue
         ages.append(age)
-        if age<28:
-            user['profile']['age']=[0,1]
-        else:
+        if age<30:
             user['profile']['age']=[1,0]
+        else:
+            user['profile']['age']=[0,1]
         collection.update({'_id':user['_id']},{'$set':{'profile':user['profile']}})
         bar.draw(index)
     s=sum(Counter(ages).values())
@@ -78,5 +78,5 @@ def age_distribute():
         print age[0],(ss)/s
 
 if __name__=='__main__':
+    age_distribute()
     analyze_feature_count('age')
-    #age_distribute()

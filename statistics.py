@@ -13,36 +13,50 @@ def statistics(attribute,threshold=-1,feature_file_name=base_dir+'/features/ment
     balance_params=get_balance_params(attribute,collection)
     all_features=get_features(feature_file_name)
     bar=progress_bar(collection.count())
-    distribute=dict([f,[0,0]] for f in all_features)
+    distribute=dict([f,[0.,0.]] for f in all_features)
+    labels_distribute=[0.,0.]
     for index,user in enumerate(collection.find()):
         try:
             label=user['profile'][attribute].index(1)
         except:
             continue
-        if random.random()>balance_params[label]:
-            continue
+        #if random.random()>balance_params[label]:
+        #    continue
         features=dict(user['mentions'])
         products=Counter(user['products'])
         for p in products:
             features[p]=products[p]
         for f in features:
             if f in distribute:
-                distribute[f][label]+=1
+                distribute[f][label]+=1#features[f]
+        labels_distribute[label]+=1
         bar.draw(index)
-    distribute=filter(lambda d:sum(d[1])>threshold, distribute.items())
+    for f in distribute.keys():
+        if sum(distribute[f])<threshold:
+            distribute.pop(f)
+    print labels_distribute
+    for f in distribute:
+        distribute[f][0]/=labels_distribute[0]
+        distribute[f][1]/=labels_distribute[1]
+    for f in distribute:
+        s=sum(distribute[f])
+        distribute[f][0]/=s
+        distribute[f][1]/=s
     if not show:
-        return dict(distribute)
-    distribute=filter(lambda d:d[1][0]<d[1][1], distribute)
-    distribute=sorted(distribute,key=lambda d:abs(1-2*(d[1][0]+0.1)/(sum(d[1])+0.1)), reverse=True)
+        return distribute
+    #distribute=filter(lambda d:d[1][0]<d[1][1], distribute.items())
+    distribute=sorted(distribute.items(),key=lambda d:abs(1-2*(d[1][0]+0.1)/(sum(d[1])+0.1)), reverse=True)
     #distribute=sorted(distribute,key=lambda d:sum(d[1]), reverse=True)
     print ''
-    for d in distribute[:20]:
+    for d in distribute[:50]:
         print '%s 0:%0.3f 1:%0.3f'%(d[0].encode('utf8'), (d[1][0]+0.1)/(sum(d[1])+0.1),1-(d[1][0]+0.1)/(sum(d[1])+0.1),)
 
 def get_labels_after_train(attribute,method):
     labels=dict()
     for line in open(RAW_DATA_DIR+'%s/train_classify_result_%s.data'%(method,attribute)):
         line=line[:-1].split('\t')
+        if float(line[2])==1.0 or float(line[2])==0.0:
+            continue
         if float(line[2])>float(line[4]):
             labels[line[0]]=int(line[1])
         else:
@@ -59,14 +73,14 @@ def statistics_after_train(attribute,method,threshold=-1,feature_file_name=base_
         balance_params[label]=1.0*min(label_distribute.values())/label_distribute[label]
     all_features=get_features(feature_file_name)
     bar=progress_bar(collection.count())
-    distribute=dict([f,[0,0]] for f in all_features)
+    distribute=dict([f,[0.,0.]] for f in all_features)
     for index,user in enumerate(collection.find()):
         try:
             label=labels[user['_id']]
         except:
             continue
-        if random.random()>balance_params[label]:
-            continue
+        #if random.random()>balance_params[label]:
+        #    continue
         features=dict(user['mentions'])
         products=Counter(user['products'])
         for p in products:
@@ -75,11 +89,20 @@ def statistics_after_train(attribute,method,threshold=-1,feature_file_name=base_
             if f in distribute:
                 distribute[f][label]+=1
         bar.draw(index)
-    distribute=filter(lambda d:sum(d[1])>threshold, distribute.items())
+    for f in distribute.keys():
+        if sum(distribute[f])<threshold:
+            distribute.pop(f)
+    for f in distribute:
+        distribute[f][0]/=label_distribute[0]
+        distribute[f][1]/=label_distribute[1]
+    for f in distribute:
+        s=sum(distribute[f])
+        distribute[f][0]/=s
+        distribute[f][1]/=s
     if not show:
         return distribute
     #distribute=filter(lambda d:d[1][0]<d[1][1], distribute)
-    distribute=sorted(distribute,key=lambda d:abs(1-2*(d[1][0]+0.1)/(sum(d[1])+0.1)), reverse=True)
+    distribute=sorted(distribute.items(),key=lambda d:abs(1-2*(d[1][0]+0.1)/(sum(d[1])+0.1)), reverse=True)
     #distribute=sorted(distribute,key=lambda d:sum(d[1]), reverse=True)
     print ''
     for d in distribute[:20]:
@@ -111,5 +134,6 @@ def compair():
     compair_single('kids',method)
 
 if __name__=='__main__':
-    #compair()
-    statistics_after_train('gender','label2trainset',threshold=5000,show=True,feature_file_name=base_dir+'/features/all_features.feature')
+    #statistics('gender',threshold=10,show=True)
+    #statistics('kids',threshold=50,show=True)
+    statistics_after_train('kids','mallet',threshold=500,show=True,feature_file_name=base_dir+'/features/mention.feature')

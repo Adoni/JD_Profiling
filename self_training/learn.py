@@ -26,13 +26,14 @@ def extract_new_data(result,count):
     good_y=[]
     bad_x=[]
     bad_y=[]
-    result0=sorted(filter(lambda r:r[1][0]>r[1][1],result),key=lambda d:abs(d[1][0]-d[1][1])*sum(d[0]),reverse=True)
-    result1=sorted(filter(lambda r:r[1][0]<r[1][1],result),key=lambda d:abs(d[1][0]-d[1][1])*sum(d[0]),reverse=True)
+    result0=sorted(filter(lambda r:r[1][0]>r[1][1],result),key=lambda d:sum(d[0]),reverse=True)
+    result1=sorted(filter(lambda r:r[1][0]<r[1][1],result),key=lambda d:sum(d[0]),reverse=True)
     count=count/2
+
     for r in result0[:count]+result1[:count]:
         good_x.append(r[0])
         good_y.append(0 if r[1][0]>r[1][1] else 1)
-    for r in result1[:count]+result1[:count]:
+    for r in result0[count:]+result1[count:]:
         bad_x.append(r[0])
         bad_y.append(0 if r[1][0]>r[1][1] else 1)
     return numpy.array(good_x),numpy.array(good_y),numpy.array(bad_x),numpy.array(bad_y)

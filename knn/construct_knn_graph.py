@@ -34,23 +34,37 @@ def get_train_user_products():
         bar.draw(index)
     return user_products
 
+def get_uids():
+    collection=Connection().jd.test_users
+    uids=[]
+    for user in collection.find():
+        uids.append(user['_id'])
+    return uids
+
 def construct_knn(neibor_count=100):
     user_products=get_train_user_products()
+    uids=get_uids()
     collection=Connection().jd.test_users
     bar=progress_bar(collection.count())
-    for index,user in enumerate(collection.find()):
+    for index,uid1 in enumerate(uids):
+        user=collection.find_one({'_id':uid1})
+        if user==None:
+            continue
+        if 'knn_by_products' in user:
+            continue
         distance=[]
         products=dict(Counter(user['products']))
         #products=user['mentions']
-        for uid in user_products:
-            if uid==user['_id']:
+        for uid2 in user_products:
+            if uid1==uid2:
                 continue
-            d=get_distance(user_products[uid],products)
-            distance.append((uid,d))
+            d=get_distance(user_products[uid2],products)
+            distance.append((uid2,d))
         distance=sorted(distance,key=lambda d:d[1],reverse=True)[:neibor_count]
-        collection.update({'_id':user['_id']},{'$set':{'knn_by_products':distance}})
+        collection.update({'_id':uid1},{'$set':{'knn_by_products':distance}})
         bar.draw(index+1)
 
 if __name__=='__main__':
-    #construct_knn()
-    init()
+    construct_knn()
+    #init()
+    print 'Done'

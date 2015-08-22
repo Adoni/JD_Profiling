@@ -1,15 +1,12 @@
 from mallet.data_constructor import *
-from mallet.statistics import *
+from statistics import *
 
-def test():
-    #construct_test_data('gender')
-    #construct_test_data('age')
-    #construct_test_data('kids')
-    #construct_test_data('location')
-    compair('gender')
-    compair('age')
-    compair('location')
-    compair('kids')
+def test(attribute):
+    construct_label_train_set(attribute,5000)
+    construct_test_data(attribute)
 
 if __name__=='__main__':
-    test()
+    test('gender')
+    test('age')
+    test('location')
+    test('kids')

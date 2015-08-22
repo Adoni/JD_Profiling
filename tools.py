@@ -160,10 +160,10 @@ def get_balance_params(attribute,collections):
         params[d]=1.0*min(distribute.values())/distribute[d]
     return params
 
-def get_features(feature_file_name=base_dir+'/features/all_features.feature'):
+def get_features(feature_file_name=base_dir+'/features/all_features.feature',start_index=0):
     all_features=dict()
     for index,line in enumerate(open(feature_file_name)):
-        all_features[line[:-1].decode('utf8')]=index
+        all_features[line[:-1].decode('utf8')]=index+start_index
     return all_features
 
 if __name__=='__main__':
