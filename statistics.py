@@ -95,14 +95,17 @@ def statistics_after_train(attribute,method,threshold=-1,feature_file_name=base_
     for f in distribute:
         distribute[f][0]/=label_distribute[0]
         distribute[f][1]/=label_distribute[1]
-    for f in distribute:
+    for f in distribute.keys():
         s=sum(distribute[f])
+        if s==0:
+            distribute.pop(f)
+            continue
         distribute[f][0]/=s
         distribute[f][1]/=s
     if not show:
         return distribute
     #distribute=filter(lambda d:d[1][0]<d[1][1], distribute)
-    distribute=sorted(distribute.items(),key=lambda d:abs(1-2*(d[1][0]+0.1)/(sum(d[1])+0.1)), reverse=True)
+    distribute=sorted(distribute.items(),key=lambda d:max(d[1])/sum(d[1]), reverse=True)
     #distribute=sorted(distribute,key=lambda d:sum(d[1]), reverse=True)
     print ''
     for d in distribute[:20]:

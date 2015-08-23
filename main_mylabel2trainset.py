@@ -17,18 +17,29 @@ def test_count_and_learn(attribute):
         print a
     print '------------'
 
+def iterate(attribute):
+    iterate_learn(attribute,10,20000)
+
 def main():
     pass
 
 if __name__=='__main__':
     os.system('cp -r /home/adoni/JD_Profiling/labeled_features/ /home/adoni/JD_Profiling/mylabel2trainset/')
-    print learn_single('age',50000)
-    print learn_single('gender',50000)
-    print learn_single('kids',50000)
-    print learn_single('location',50000)
+    #construct_all_data()
+    #print learn_single('gender',50000)
+    #print learn_single('age',50000)
+    #print learn_single('kids',50000)
+    #print learn_single('location',50000)
     #construct_all_data()
     #test_count_and_learn('gender')
     #test_count_and_learn('age')
     #test_count_and_learn('location')
     #test_count_and_learn('kids')
+    iterate_learn('age',10,2000,500)
+    iterate_learn('location',10,1000,100)
+    iterate_learn('gender',10,1000,500)
+    iterate_learn('kids',10,1000,100)
+    #self_training('age',10,5000,50)
+    #self_training('location',10,5000,50)
+    #self_training('gender',10,5000,50)
     print 'Done'

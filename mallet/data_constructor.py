@@ -36,7 +36,7 @@ def construct_label_train_set(attribute,training_count):
     confidence=[]
     for index,user in enumerate(collection.find()):
         label_distributed=[1,1]
-        for f,value in user['mentions_0'].items():
+        for f,value in user['mentions'].items():
             if f in labeled_features:
                 label_distributed[0]*=labeled_features[f][0]*value
                 label_distributed[1]*=labeled_features[f][1]*value
@@ -66,12 +66,14 @@ def construct_label_train_set(attribute,training_count):
                     str_features))
         bar.draw(index+1)
 
-    confidence=sorted(confidence,key=lambda d:d[2],reverse=True)
     confidence0=filter(lambda d:d[1]==0,confidence)
+    confidence0=sorted(confidence0,key=lambda d:d[2],reverse=True)
     confidence1=filter(lambda d:d[1]==1,confidence)
+    confidence1=sorted(confidence1,key=lambda d:d[2],reverse=True)
+
     dimention=min(len(confidence0),len(confidence1))
-    confidence0=confidence0[:dimention]
-    confidence1=confidence1[:dimention]
+    #confidence0=confidence0[:dimention]
+    #confidence1=confidence1[:dimention]
     print len(confidence0),len(confidence1)
     fout=open(RAW_DATA_DIR+'mallet/mallet_train_%s.data'%attribute,'w')
     for d in confidence0+confidence1:
