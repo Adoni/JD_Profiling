@@ -7,6 +7,18 @@ from small_utils.progress_bar import progress_bar
 from tools import get_balance_params
 from tools import get_features
 
+def get_word_count():
+    collection=Connection().jd.train_users
+    count=dict()
+    for user in collection.find():
+        for m,v in user['mentions'].items():
+            if m in count:
+                count[m]+=v
+            else:
+                count[m]=v
+    for m,v in sorted(count.items(),key=lambda d:d[1]):
+        print m,v
+
 def statistics(attribute,threshold=-1,feature_file_name=base_dir+'/features/mention.feature',show=False):
     import random
     collection=Connection().jd.test_users
@@ -26,6 +38,8 @@ def statistics(attribute,threshold=-1,feature_file_name=base_dir+'/features/ment
         products=Counter(user['products'])
         for p in products:
             features[p]=products[p]
+        if len(features)<10:
+            continue
         for f in features:
             if f in distribute:
                 distribute[f][label]+=1#features[f]
@@ -55,7 +69,7 @@ def get_labels_after_train(attribute,method):
     labels=dict()
     for line in open(RAW_DATA_DIR+'%s/train_classify_result_%s.data'%(method,attribute)):
         line=line[:-1].split('\t')
-        if float(line[2])==1.0 or float(line[2])==0.0:
+        if abs(float(line[2])-float(line[4]))<0.0:
             continue
         if float(line[2])>float(line[4]):
             labels[line[0]]=int(line[1])
@@ -66,6 +80,7 @@ def get_labels_after_train(attribute,method):
 def statistics_after_train(attribute,method,threshold=-1,feature_file_name=base_dir+'/features/mention.feature',show=False):
     import random
     labels=get_labels_after_train(attribute,method)
+    print len(labels)
     collection=Connection().jd.train_users
     label_distribute=Counter(labels.values())
     balance_params=dict()
@@ -92,6 +107,7 @@ def statistics_after_train(attribute,method,threshold=-1,feature_file_name=base_
     for f in distribute.keys():
         if sum(distribute[f])<threshold:
             distribute.pop(f)
+    print label_distribute
     for f in distribute:
         distribute[f][0]/=label_distribute[0]
         distribute[f][1]/=label_distribute[1]
@@ -108,7 +124,7 @@ def statistics_after_train(attribute,method,threshold=-1,feature_file_name=base_
     distribute=sorted(distribute.items(),key=lambda d:max(d[1])/sum(d[1]), reverse=True)
     #distribute=sorted(distribute,key=lambda d:sum(d[1]), reverse=True)
     print ''
-    for d in distribute[:20]:
+    for d in distribute[:50]:
         print '%s 0:%0.3f 1:%0.3f'%(d[0].encode('utf8'), (d[1][0]+0.1)/(sum(d[1])+0.1),1-(d[1][0]+0.1)/(sum(d[1])+0.1),)
 
 def compair_single(attribute,method):
@@ -137,6 +153,8 @@ def compair():
     compair_single('kids',method)
 
 if __name__=='__main__':
-    #statistics('gender',threshold=10,show=True)
+    #statistics('location',threshold=50,show=True,feature_file_name=base_dir+'/features/mention.feature')
     #statistics('kids',threshold=50,show=True)
-    statistics_after_train('kids','mallet',threshold=500,show=True,feature_file_name=base_dir+'/features/mention.feature')
+    statistics_after_train('gender','mallet',threshold=50,show=True,feature_file_name=base_dir+'/features/mention.feature')
+    #get_word_count()
+    print 'Done'

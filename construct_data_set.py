@@ -4,6 +4,7 @@ from tools import get_mentions
 from settings import RAW_DATA_DIR
 from small_utils.progress_bar import progress_bar
 from settings import base_dir
+from collections import Counter
 import numpy
 
 mention_words=[line[:-1].split(' ')[0] for line in open(RAW_DATA_DIR+'mention.data')]
@@ -44,11 +45,13 @@ def count_mentions(review):
     return counts
 
 def construct_train_user():
+    from pyltp import Segmentor
     all_products=get_all_ids_from_file('product')
     collection=Connection().jd.train_users
     fname=RAW_DATA_DIR+'user_review.data'
     f=open(fname)
     count=int(f.readline()[:-1])
+    print count
     bar=progress_bar(count)
     for i in xrange(count):
         uid=f.readline()[:-1]
@@ -147,19 +150,15 @@ def output_vector(entity_name):
             fout.write('%s %s\n'%(entity['_id'],' '.join(map(lambda d:str(d),vector))))
         bar.draw(index+1)
 
-def output_all_features():
-    fout=open(base_dir+'/features/all_features.feature','w')
-    for i in get_all_ids_from_db('train_products')[:10000]+mention_words:
-        fout.write('%s\n'%i)
-
 def insert_LINE_vector(file_name=RAW_DATA_DIR+'normalize2.data'):
     vectors=dict()
     fin=open(file_name)
-    count=int(fin.read().split(' ')[0])
+    line=fin.readline().strip().split(' ')
+    count,dimention=int(line[0]),int(line[1])
     bar=progress_bar(count)
     for index in xrange(count):
         line=fin.readline()
-        line=line[:-1].split(' ')
+        line=line.strip().split(' ')
         vector=map(lambda d:float(d),line[1:])
         vectors[line[0]]=vector
         bar.draw(index+1)
@@ -167,18 +166,47 @@ def insert_LINE_vector(file_name=RAW_DATA_DIR+'normalize2.data'):
     bar=progress_bar(collection.count())
     for index,user in enumerate(collection.find()):
         if user['_id'] not in vectors:
+            vectors[user['_id']]=[0.]*dimention
             continue
-        collection.update({'_id':user['_id']},{'$set':{'user_product_vector':vectors[user['_id']]}})
+        collection.update({'_id':user['_id']},{'$set':{'user_product_vector_from_line':vectors[user['_id']]}})
         bar.draw(index+1)
     collection=Connection().jd.test_users
     bar=progress_bar(collection.count())
     for index,user in enumerate(collection.find()):
         if user['_id'] not in vectors:
             continue
-        collection.update({'_id':user['_id']},{'$set':{'user_product_vector':vectors[user['_id']]}})
+        collection.update({'_id':user['_id']},{'$set':{'user_product_vector_from_line':vectors[user['_id']]}})
         bar.draw(index+1)
 
+def insert_review(collection,fname):
+    from collections import Counter
+    from pyltp import Segmentor
+    f=open(fname)
+    count=int(f.readline()[:-1])
+    print count
+    segmentor=Segmentor()
+    segmentor.load('/home/adoni/cws.model')
+    bar=progress_bar(count)
+    for i in xrange(count):
+        uid=f.readline()[:-1]
+        products=f.readline()
+        review=f.readline()[:-1].replace('|&|',' ')
+        review=[w for w in segmentor.segment(review)]
+        collection.update({'_id':uid},{'$set':{'review':review}},safe=True)
+        bar.draw(i+1)
 
+def output_features(fname,key):
+    fout=open(fname,'w')
+    collection=Connection().jd.train_users
+    bar=progress_bar(collection.count())
+    features=[]
+    for index,user in enumerate(collection.find()):
+        features+=user[key]
+        bar.draw(index+1)
+    features=sorted(Counter(features).items(), key=lambda d:d[1],reverse=True)
+    fout=open('./features/review.feature','w')
+    for f in features:
+        fout.write('%s %d\n'%(f[0].encode('utf8'),f[1]))
 
 if __name__=='__main__':
     #construct_data_set('user')
@@ -193,5 +221,8 @@ if __name__=='__main__':
     #attribute_statistics('kids')
     #output_all_features()
     #output_user_product_graph()
-    insert_LINE_vector()
+    #insert_LINE_vector()
+    #insert_review(Connection().jd.train_users,RAW_DATA_DIR+'user_review.data')
+    #insert_review(Connection().jd.test_users,RAW_DATA_DIR+'test_user_review.data')
+    output_features(base_dir+'/features/review.feature','review')
     print 'Done'

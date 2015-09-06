@@ -17,9 +17,6 @@ def test_count_and_learn(attribute):
         print a
     print '------------'
 
-def iterate(attribute):
-    iterate_learn(attribute,10,20000)
-
 def main():
     pass
 
@@ -35,10 +32,10 @@ if __name__=='__main__':
     #test_count_and_learn('age')
     #test_count_and_learn('location')
     #test_count_and_learn('kids')
-    iterate_learn('age',10,2000,500)
-    iterate_learn('location',10,1000,100)
-    iterate_learn('gender',10,1000,500)
-    iterate_learn('kids',10,1000,100)
+    iterate_learn('kids',60,1000,50)
+    iterate_learn('age',60,4000,100)
+    iterate_learn('gender',60,5000,200)###good
+    iterate_learn('location',60,1000,100)#good
     #self_training('age',10,5000,50)
     #self_training('location',10,5000,50)
     #self_training('gender',10,5000,50)

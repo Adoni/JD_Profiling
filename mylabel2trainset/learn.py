@@ -9,7 +9,7 @@ from statistics import *
 import numpy
 
 def get_data(attribute,kind):
-    data = load_svmlight_file(RAW_DATA_DIR+'mylabel2trainset/%s_%s.data'%(attribute,kind),n_features=12000)
+    data = load_svmlight_file(RAW_DATA_DIR+'mylabel2trainset/%s_%s.data'%(attribute,kind),n_features=32000)
     uids=[line[:-1] for line in open(RAW_DATA_DIR+'mylabel2trainset/%s_%s_uids.data'%(attribute,kind))]
     return data[0].toarray(), data[1], uids
 
@@ -24,6 +24,7 @@ def learn(attribute):
     fout=open(RAW_DATA_DIR+'mylabel2trainset/train_classify_result_%s.data'%attribute,'w')
     #for uid,y in zip(all_uids[:count],clf.predict_proba(all_x[:count])):
     for uid,y in zip(unlabel_train_uids,clf.predict_proba(unlabel_train_x)):
+    #for uid,y in zip(train_uids,clf.predict_proba(train_x)):
         fout.write('%s\t0\t%0.4f\t1\t%0.4f\n'%(uid,y[0],y[1]))
     score=clf.score(test_x,test_y)
     print clf.score(train_x,train_y)
@@ -42,8 +43,8 @@ def update_labeled_feature(attribute,new_labeled_feature, max_count=1):
     fout=open(base_dir+'/mylabel2trainset/labeled_features/review_constraint_%s.constraints'%attribute,'a')
     count=0
     for label in new_labeled_feature:
-        if label[0] in exist_labes:
-            continue
+        #if label[0] in exist_labes:
+        #    continue
         if sum(label[1])==0:
             break
         d=[1.*label[1][0]/sum(label[1]),1.*label[1][1]/sum(label[1])]
@@ -64,13 +65,13 @@ def iterate_learn(attribute,iterate_count,initial_data_count,new_data_count):
         print 'Iterate: %d'%i
         print '============'
         accurate=learn(attribute)
-        fout.write('%d %0.4f\n'%(i,accurate))
+        fout.write('%d %f\n'%(i,accurate))
         accurates.append(accurate)
-        label_distribute=statistics_after_train(attribute,method='mylabel2trainset',threshold=-1,show=False,feature_file_name=base_dir+'/features/all_features.feature')
-        threshold=0.8
+        label_distribute=statistics_after_train(attribute,method='mylabel2trainset',threshold=10,show=False,feature_file_name=base_dir+'/features/all_features.feature')
+        threshold=0.7
         label_distribute=filter(lambda d:1.0*max(d[1])/sum(d[1])>threshold, label_distribute.items())
         label_distribute=sorted(label_distribute,key=lambda d:1.0*max(d[1])/sum(d[1]), reverse=True)
-        update_labeled_feature(attribute,label_distribute,max_count=5)
+        update_labeled_feature(attribute,label_distribute,max_count=2)
     return accurates
 
 def extract_new_data(result,count):
