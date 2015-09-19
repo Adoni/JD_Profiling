@@ -35,7 +35,8 @@ def update(collection):
         s=1.0*sum(mentions.values())
         for m in mentions:
             mentions[m]/=s
-        collection.update({'_id':c['_id']},{'$set':{'mentions_0':mentions}})
+        #collection.update({'_id':c['_id']},{'$set':{'mentions_0':mentions,'mentions_1':{}}})
+        collection.update({'_id':c['_id']},{'$unset':{'mentions_1':""}})
 
 def prp_single_user(ucollection,pcollection,uid,iterate):
     user=ucollection.find_one({'_id':uid})
@@ -46,7 +47,7 @@ def prp_single_user(ucollection,pcollection,uid,iterate):
     for pid in user['products']:
         product=pcollection.find_one({'_id':pid})
         if product==None:
-            print 'Not found product %s'%pid
+            #print 'Not found product %s'%pid
             continue
         for m,v in product['mentions_%d'%(iterate-1)].items():
             if m in mentions:
@@ -56,7 +57,23 @@ def prp_single_user(ucollection,pcollection,uid,iterate):
     s=1.0*sum(mentions.values())
     for m in mentions:
         mentions[m]/=s
-    ucollection.update({'_id':user['_id']},{'$set':{'mentions_%d'%iterate:mentions}})
+    max_v=72
+    alpha=1.0*len(user['mentions'])/max_v
+    F1=dict()
+    for key in set(user['mentions_0'].keys()+mentions.keys()):
+        try:
+            f0=user['mentions_0'][key]
+        except:
+            f0=0.
+        try:
+            f1=mentions[key]
+        except:
+            f1=0.
+
+        if f0==0 and f1==0:
+            continue
+        F1[key]=alpha*f0+(1-alpha)*f1
+    ucollection.update({'_id':user['_id']},{'$set':{'mentions_%d'%iterate:F1}})
 
 def prp_single_product(ucollection,pcollection,pid,iterate):
     product=pcollection.find_one({'_id':pid})
@@ -67,7 +84,7 @@ def prp_single_product(ucollection,pcollection,pid,iterate):
     for uid in product['users']:
         user=ucollection.find_one({'_id':uid})
         if user==None:
-            print 'Not found product %s'%uid
+            #print 'Not found user %s'%uid
             continue
         for m,v in user['mentions_%d'%iterate].items():
             if m in mentions:
@@ -77,30 +94,66 @@ def prp_single_product(ucollection,pcollection,pid,iterate):
     s=1.0*sum(mentions.values())
     for m in mentions:
         mentions[m]/=s
-    pcollection.update({'_id':product['_id']},{'$set':{'mentions_%d'%iterate:mentions}})
+    max_v=418
+    alpha=1.0*len(product['mentions'])/max_v
+    F1=dict()
+    for key in set(product['mentions_0'].keys()+mentions.keys()):
+        try:
+            f0=product['mentions_0'][key]
+        except:
+            f0=0.
+        try:
+            f1=mentions[key]
+        except:
+            f1=0.
 
-def prp_user(ucollection,pcollection,iterate):
-    bar=progress_bar(u_collection.count())
-    for index,user in enumerate(u_collection.find()):
-        prp_single_user(u_collection,p_collection,user['_id'],iterate)
+        if f0==0 and f1==0:
+            continue
+        F1[key]=alpha*f0+(1-alpha)*f1
+    pcollection.update({'_id':product['_id']},{'$set':{'mentions_%d'%iterate:F1}})
+
+def get_id(collection,iterate):
+    ids=[]
+    for c in collection.find():
+        if 'mentions_%d'%iterate in c:
+            continue
+        ids.append(c['_id'])
+    return ids
+
+def prp_user(u_collection,p_collection,iterate):
+    print 'prp user'
+    uids=get_id(u_collection,iterate)
+    print len(uids)
+    bar=progress_bar(len(uids))
+    for index,uid in enumerate(uids):
+        prp_single_user(u_collection,p_collection,uid,iterate)
         bar.draw(index+1)
 
-def prp_product(ucollection,pcollection,iterate):
-    bar=progress_bar(u_collection.count())
-    for index,user in enumerate(u_collection.find()):
-        prp_single_user(u_collection,p_collection,user['_id'],iterate)
+def prp_product(u_collection,p_collection,iterate):
+    print 'prp product'
+    pids=get_id(p_collection,iterate)
+    print len(pids)
+    bar=progress_bar(len(pids))
+    for index,pid in enumerate(pids):
+        prp_single_product(u_collection,p_collection,pid,iterate)
+        bar.draw(index+1)
 
 def prp(iterate):
+    print iterate
     u_collection=Connection().jd.train_users
     p_collection=Connection().jd.train_products
-    u_t_collection=Connection().jd.train_users
+    u_t_collection=Connection().jd.test_users
 
     prp_user(u_collection,p_collection,iterate)
     prp_user(u_t_collection,p_collection,iterate)
     prp_product(u_collection,p_collection,iterate)
+    print 'Done'
 
 
 if __name__=='__main__':
-    #prp(1)
+    prp(1)
+    prp(2)
+    prp(3)
+    #prp(4)
     print 'Done'
 

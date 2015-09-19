@@ -32,25 +32,35 @@ def output(file_name,data):
     for d in data:
         fout.write('%s %d %s\n'%(d[0],d[1],dict2mallt(d[2])))
 
+def get_test_uids():
+    collection=Connection().jd.test_users
+    uids=set()
+    for user in collection.find():
+        uids.add(user['_id'])
+    return uids
+
 def construct_train_data():
     import random
     all_features=get_features(feature_file_name=feature_file_name)
-    review_features=get_features(feature_file_name=base_dir+'/features/review.feature')
+    review_features=get_features(feature_file_name=base_dir+'/features/review.feature',start_index=max(all_features.values())+1)
     collection=Connection().jd.train_users
     bar=progress_bar(collection.count())
     data=[]
+    uids=get_test_uids()
     for index,user in enumerate(collection.find()):
         uid=user['_id']
+        if uid in uids:
+            continue
         features=combine_features(user['mentions'],Counter(user['products']))
         x=dict()
         for f in features:
             if f not in all_features:
                 continue
-            x[all_features[f]]=1#features[f]
+            x[all_features[f]]=features[f]
         for f,v in Counter(user['review']).items():
             if f not in review_features:
                 continue
-            x[review_features[f]]=1#v
+            x[review_features[f]]=v
         y=random.randint(0,1)
         data.append([uid,y,x])
         bar.draw(index+1)
@@ -59,7 +69,7 @@ def construct_train_data():
 def construct_test_data(attribute):
     collection=Connection().jd.test_users
     all_features=get_features(feature_file_name=feature_file_name)
-    review_features=get_features(feature_file_name=base_dir+'/features/review.feature')
+    review_features=get_features(feature_file_name=base_dir+'/features/review.feature',start_index=max(all_features.values())+1)
     data=[]
     bar=progress_bar(collection.count())
     for index,user in enumerate(collection.find()):
@@ -73,13 +83,13 @@ def construct_test_data(attribute):
         for f in features:
             if f not in all_features:
                 continue
-            x[all_features[f]]=1#features[f]
+            x[all_features[f]]=features[f]
 
         for f,v in Counter(user['review']).items():
             if f not in review_features:
                 continue
-            x[review_features[f]]=1#v
+            x[review_features[f]]=v
         data.append([uid,y,x])
         bar.draw(index+1)
-    data=balance(data,target_index=1)
+    #data=balance(data,target_index=1)
     output(RAW_DATA_DIR+'mallet/mallet_test_%s.data'%attribute,data)

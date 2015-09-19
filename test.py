@@ -77,6 +77,48 @@ def age_distribute():
         ss+=age[1]
         print age[0],(ss)/s
 
+def count_attribute(attribute):
+    from pymongo import Connection
+    from collections import Counter
+    collection=Connection().jd.test_users
+    a=[]
+    for user in collection.find():
+        try:
+            label=user['profile'][attribute].index(1)
+        except:
+            continue
+        a.append(label)
+    print Counter(a),len(a)
+
+def count_distribute():
+    from pymongo import Connection
+    from collections import Counter
+    collection=Connection().jd.test_users
+    uc=0
+    pc=0
+    mc=0
+    rc=0
+    for user in collection.find():
+        uc+=1
+        pc+=len(user['products'])
+        mc+=len(user['mentions'])
+        rc+=len(user['review'])
+    print uc,pc,mc,rc
+    print uc,1.0*pc/uc,1.0*mc/uc,1.0*rc/uc
+
+def count_occur(words):
+    from pymongo import Connection
+    occur=dict([(w, 0) for w in words])
+    collection=Connection().jd.train_users
+    keys=set(occur.keys())
+    for user in collection.find():
+        for w in set(user['mentions'].keys())&keys:
+            if w in occur:
+                occur[w]+=1
+    for w in words:
+        v=occur[w]
+        print '%s\n(%0.2f\\%%)'%(w.encode('utf8'),100.0*v/100000)
+
 if __name__=='__main__':
-    age_distribute()
-    analyze_feature_count('age')
+    words=[line.split(' ')[0].decode('utf8') for line in open('./tmp.data')]
+    count_occur(words)

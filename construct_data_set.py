@@ -187,13 +187,17 @@ def insert_review(collection,fname):
     segmentor=Segmentor()
     segmentor.load('/home/adoni/cws.model')
     bar=progress_bar(count)
+    review_count=0
     for i in xrange(count):
         uid=f.readline()[:-1]
         products=f.readline()
         review=f.readline()[:-1].replace('|&|',' ')
+        review_count+=len(review)
+        continue
         review=[w for w in segmentor.segment(review)]
         collection.update({'_id':uid},{'$set':{'review':review}},safe=True)
         bar.draw(i+1)
+    print review_count
 
 def output_features(fname,key):
     fout=open(fname,'w')
@@ -222,7 +226,7 @@ if __name__=='__main__':
     #output_all_features()
     #output_user_product_graph()
     #insert_LINE_vector()
-    #insert_review(Connection().jd.train_users,RAW_DATA_DIR+'user_review.data')
+    insert_review(Connection().jd.train_users,RAW_DATA_DIR+'user_review.data')
     #insert_review(Connection().jd.test_users,RAW_DATA_DIR+'test_user_review.data')
-    output_features(base_dir+'/features/review.feature','review')
+    #output_features(base_dir+'/features/review.feature','review')
     print 'Done'
